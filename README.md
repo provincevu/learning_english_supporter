@@ -14,9 +14,3 @@ File này sẽ tự động:
 - Tạo môi trường ảo Python
 - Cài đặt tất cả package cần thiết
 - Cài mô hình tiếng Anh nhỏ cho spaCy
-
-## 3. Chạy chương trình
-Sau khi cài đặt, chạy file chính của dự án (ví dụ):
-```bash
-python app.py
-```
