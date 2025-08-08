@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Kết quả tách cụm & IPA từ file input.txt</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #fafbfc; margin: 0; padding: 0;}
+        .container { max-width: 900px; margin: 40px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); padding: 32px 30px 38px 30px;}
+        .sentence-title { font-weight: bold; font-size: 1.07em; margin-top: 26px; margin-bottom: 5px;}
+        .phrase-table { width: 100%; border-collapse: collapse; margin-bottom: 12px;}
+        .phrase-table th, .phrase-table td { padding: 8px 6px; border-bottom: 1px solid #ededed;}
+        .phrase-table th {background: #f8f8f8;}
+        .voice-btn { background: #f5f6fa; border: 1px solid #bfc8e0; color: #3e66b1; border-radius: 50%; width: 26px; height: 26px; font-size: 15px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;}
+        .voice-btn:hover { background: #e5f0ff; border-color: #4f95ef; color: #174983;}
+        .ipa-col { font-family: 'Segoe UI', 'Arial', 'sans-serif'; color: #444; font-size: 1.07em;}
+        .vi-col { color: #256c0b; font-size: 1.03em;}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Kết quả tách cụm & phiên âm IPA từ file <code>input.txt</code></h2>
+        {% for item in batch_results %}
+            <div class="sentence-title">Câu: {{ item.sentence }}</div>
+            <table class="phrase-table">
+                <thead>
+                    <tr>
+                        <th>Cụm từ tiếng Anh</th>
+                        <th></th>
+                        <th>IPA</th>
+                        <th>Dịch tiếng Việt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for phrase in item.phrases %}
+                    <tr>
+                        <td>{{ phrase.text }}</td>
+                        <td>
+                            <button class="voice-btn" aria-label="Phát âm {{ phrase.text }}" data-voice="{{ phrase.text }}">&#128264;</button>
+                        </td>
+                        <td class="ipa-col">{{ phrase.ipa }}</td>
+                        <td class="vi-col">{{ phrase.vi }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endfor %}
+    </div>
+    <script>
+        document.addEventListener('click', function(e){
+            if(e.target.classList.contains('voice-btn')){
+                e.stopPropagation();
+                let text = e.target.getAttribute('data-voice');
+                speakPhrase(text);
+            }
+        });
+        function speakPhrase(text) {
+            if (!window.speechSynthesis) {
+                alert("Trình duyệt của bạn không hỗ trợ phát âm!");
+                return;
+            }
+            const utter = new window.SpeechSynthesisUtterance(text);
+            utter.lang = "en-US";
+            const voices = window.speechSynthesis.getVoices();
+            const usVoice = voices.find(v => v.lang === 'en-US');
+            if (usVoice) utter.voice = usVoice;
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(utter);
+        }
+        window.speechSynthesis.getVoices();
+    </script>
+</body>
+</html>

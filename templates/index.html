@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>English Phrase Learning Demo (Voice Button in Separate Column)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        /* ... CSS giữ nguyên ... */
+        body { font-family: Arial, sans-serif; background: #fafbfc; margin: 0; padding: 0;}
+        .container { max-width: 670px; margin: 40px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); padding: 32px 30px 38px 30px;}
+        .form-section { margin-bottom: 32px;}
+        .phrase-table { width: 100%; border-collapse: collapse; margin-top: 8px;}
+        .phrase-table th, .phrase-table td { padding: 10px 8px; border-bottom: 1px solid #ededed; text-align: left;}
+        .phrase-table th {background: #f8f8f8; font-size: 1em;}
+        .phrase-table td.voice-col { width: 38px; text-align: center;}
+        .voice-btn { background: #f5f6fa; border: 1px solid #bfc8e0; color: #3e66b1; border-radius: 50%; width: 28px; height: 28px; font-size: 16px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background 0.15s, border 0.15s, color 0.15s;}
+        .voice-btn:hover { background: #e5f0ff; border-color: #4f95ef; color: #174983;}
+        .ipa-col { font-family: 'Segoe UI', 'Arial', 'sans-serif'; color: #444; font-size: 1.07em;}
+        .footer { margin-top: 40px; text-align: center; color: #888; font-size: .97em;}
+        @media (max-width: 600px) {
+            .container { padding: 10px;}
+            .phrase-table th, .phrase-table td { padding: 7px 2px; font-size: .96em;}
+            .voice-btn { width: 24px; height: 24px; font-size: 14px;}
+            .phrase-table td.voice-col { width: 28px;}
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-section">
+            <form method="post" id="phrase-form">
+                <label for="sentence">Nhập câu tiếng Anh:</label><br>
+                <input type="text" id="sentence" name="sentence" style="width:70%;font-size:1.1em;padding:4px;" required autofocus value="{{ result.sentence if result }}">
+                <button type="submit" style="font-size:1em;padding:4px 16px;">Tách cụm & IPA</button>
+            </form>
+        </div>
+        {% if result %}
+            <table class="phrase-table">
+                <thead>
+                    <tr>
+                        <th>Cụm từ tiếng Anh</th>
+                        <th class="voice-col"></th>
+                        <th>IPA</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for item in result.phrases %}
+                    <tr>
+                        <td>{{ item.text }}</td>
+                        <td class="voice-col">
+                            <button class="voice-btn" aria-label="Phát âm {{ item.text }}" data-voice="{{ item.text }}">&#128264;</button>
+                        </td>
+                        <td class="ipa-col">{{ item.ipa }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+        <div class="footer">
+            <span>💡 Mẹo: Bạn có thể click loa để nghe phát âm, hoặc nhập câu khác để tách cụm và xem phiên âm IPA!</span>
+        </div>
+    </div>
+    <script>
+        // Phát âm khi click vào nút voice
+        document.addEventListener('click', function(e){
+            if(e.target.classList.contains('voice-btn')){
+                e.stopPropagation();
+                let text = e.target.getAttribute('data-voice');
+                speakPhrase(text);
+            }
+        });
+        function speakPhrase(text) {
+            if (!window.speechSynthesis) {
+                alert("Trình duyệt của bạn không hỗ trợ phát âm!");
+                return;
+            }
+            const utter = new window.SpeechSynthesisUtterance(text);
+            utter.lang = "en-US";
+            const voices = window.speechSynthesis.getVoices();
+            const usVoice = voices.find(v => v.lang === 'en-US');
+            if (usVoice) utter.voice = usVoice;
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(utter);
+        }
+        window.speechSynthesis.getVoices();
+    </script>
+</body>
+</html>
