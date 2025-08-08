@@ -1,17 +1,22 @@
-## Cài đặt nhanh môi trường
+# Hướng dẫn cài đặt và sử dụng dự án
 
-### Trên Windows:
+## 1. Yêu cầu
+- Python 3.8 trở lên (nên sử dụng 3.12.8 nếu phát sinh các lỗi không đáng có)
+
+## 2. Cài đặt môi trường
+
+### **Cách nhanh nhất (Windows)**
+Chạy file sau trong thư mục dự án:
 ```bat
-python -m venv venv
-call venv\Scripts\activate
-pip install -r requirements.txt
-python -m spacy download en_core_web_sm
+setup.bat
 ```
+File này sẽ tự động:
+- Tạo môi trường ảo Python
+- Cài đặt tất cả package cần thiết
+- Cài mô hình tiếng Anh nhỏ cho spaCy
 
-### Trên Linux/Mac:
+## 3. Chạy chương trình
+Sau khi cài đặt, chạy file chính của dự án (ví dụ):
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python -m spacy download en_core_web_sm
+python app.py
 ```
