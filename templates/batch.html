@@ -7,6 +7,39 @@
         body { font-family: Arial, sans-serif; background: #fafbfc; margin: 0; padding: 0;}
         .container { max-width: 900px; margin: 40px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); padding: 32px 30px 38px 30px;}
         .sentence-title { font-weight: bold; font-size: 1.07em; margin-top: 26px; margin-bottom: 5px;}
+        .sentence { font-size: 1.13em; margin-bottom: 12px;}
+        .phrase-highlight {
+            background: #e5f0ff;
+            border-radius: 5px;
+            transition: background 0.2s;
+            padding: 2px 4px;
+            margin-right: 2px;
+            cursor: pointer;
+        }
+        .phrase-highlight.active,
+        .phrase-highlight:hover {
+            background: #98c6ff;
+            box-shadow: 0 0 0 2px #4f95ef;
+        }
+        .vi-full {
+            font-size: 1.11em;
+            color: #185209;
+            margin: 0 0 18px 0;
+            line-height: 1.8;
+        }
+        .vi-full-highlight {
+            background: #eafbe6;
+            border-radius: 4px;
+            transition: background 0.2s;
+            padding: 1.5px 4px;
+            margin-right: 2px;
+            cursor: pointer;
+        }
+        .vi-full-highlight.active,
+        .vi-full-highlight:hover {
+            background: #befad2;
+            box-shadow: 0 0 0 2px #a7eec7;
+        }
         .phrase-table { width: 100%; border-collapse: collapse; margin-bottom: 12px;}
         .phrase-table th, .phrase-table td { padding: 8px 6px; border-bottom: 1px solid #ededed;}
         .phrase-table th {background: #f8f8f8;}
@@ -14,13 +47,37 @@
         .voice-btn:hover { background: #e5f0ff; border-color: #4f95ef; color: #174983;}
         .ipa-col { font-family: 'Segoe UI', 'Arial', 'sans-serif'; color: #444; font-size: 1.07em;}
         .vi-col { color: #256c0b; font-size: 1.03em;}
+        .en-col { font-weight: 500; color: #1a3a6b; cursor: pointer; background: transparent; transition: background 0.15s;}
+        .en-col.active,
+        .en-col:hover {
+            background: #e5f0ff;
+        }
+        .phrase-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .phrase-table tbody tr:hover {
+            background: #e6f0ff;
+            transition: background 0.2s;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>Kết quả tách cụm & phiên âm IPA từ file <code>input.txt</code></h2>
         {% for item in batch_results %}
-            <div class="sentence-title">Câu: {{ item.sentence }}</div>
+            <div class="sentence-title">Câu {{ loop.index }}:</div>
+            <div class="sentence">
+                {% for phrase in item.phrases %}
+                    <span class="phrase-highlight" data-phrase="{{ phrase.data_phrase }}">{{ phrase.text }}</span>
+                {% endfor %}
+            </div>
+            <div class="vi-full">
+                <!-- Hover đồng bộ từng cụm tiếng Việt -->
+                {% for vi_span in item.vi_phrase_spans %}
+                    <span class="vi-full-highlight" data-phrase="{{ vi_span.data_phrase }}">{{ vi_span.vi }}</span>
+                {% endfor %}
+            </div>
+            <span style="color:#888;font-size:0.95em;">&nbsp;&nbsp;[dịch hoàn chỉnh máy: {{ item.vi_full }}]</span>
             <table class="phrase-table">
                 <thead>
                     <tr>
@@ -33,7 +90,7 @@
                 <tbody>
                 {% for phrase in item.phrases %}
                     <tr>
-                        <td>{{ phrase.text }}</td>
+                        <td class="en-col" data-phrase="{{ phrase.data_phrase }}">{{ phrase.text }}</td>
                         <td>
                             <button class="voice-btn" aria-label="Phát âm {{ phrase.text }}" data-voice="{{ phrase.text }}">&#128264;</button>
                         </td>
@@ -46,6 +103,23 @@
         {% endfor %}
     </div>
     <script>
+        // Hover đồng bộ tất cả cụm: en-col, phrase-highlight, vi-full-highlight
+        document.querySelectorAll('.en-col, .phrase-highlight, .vi-full-highlight').forEach(function(elem) {
+            elem.addEventListener('mouseenter', function() {
+                let phrase = elem.getAttribute('data-phrase');
+                document.querySelectorAll('[data-phrase="' + phrase + '"]').forEach(function(target){
+                    target.classList.add('active');
+                });
+            });
+            elem.addEventListener('mouseleave', function() {
+                let phrase = elem.getAttribute('data-phrase');
+                document.querySelectorAll('[data-phrase="' + phrase + '"]').forEach(function(target){
+                    target.classList.remove('active');
+                });
+            });
+        });
+
+        // Phát âm
         document.addEventListener('click', function(e){
             if(e.target.classList.contains('voice-btn')){
                 e.stopPropagation();

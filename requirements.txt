@@ -2,4 +2,4 @@ PyMuPDF
 spacy
 eng_to_ipa
 flask
-googletrans==4.0.0rc1
+deep-translator

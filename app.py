@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 from phrase_extractor import extract_phrases
 from eng2ipa import get_phonetics_for_phrases
-from trans import translate_phrases
+from trans import translate_phrases, translate_sentence  # Thêm hàm dịch cả câu
 
 app = Flask(__name__)
 
@@ -13,8 +13,10 @@ def index():
         phrases = extract_phrases(sentence)
         ipa_dict = get_phonetics_for_phrases(phrases)
         trans_dict = translate_phrases(phrases, dest='vi')
+        vi_full = translate_sentence(sentence, dest='vi')  # Dịch cả câu
         result = {
             "sentence": sentence,
+            "vi_full": vi_full,
             "phrases": [
                 {
                     "text": phrase,
@@ -26,7 +28,6 @@ def index():
         }
     return render_template('index.html', result=result)
 
-# API endpoint cho JS fetch
 @app.route('/api/phrase-ipa', methods=['POST'])
 def api_phrase_ipa():
     data = request.get_json()
@@ -34,7 +35,9 @@ def api_phrase_ipa():
     phrases = extract_phrases(sentence)
     ipa_dict = get_phonetics_for_phrases(phrases)
     trans_dict = translate_phrases(phrases, dest='vi')
+    vi_full = translate_sentence(sentence, dest='vi')
     return jsonify({
+        "vi_full": vi_full,
         "phrases": [
             {
                 "text": phrase,
@@ -45,7 +48,6 @@ def api_phrase_ipa():
         ]
     })
 
-# Route đọc file input.txt và show kết quả cho nhiều câu
 @app.route('/batch')
 def batch():
     sentences = []
@@ -59,19 +61,31 @@ def batch():
         return f"Không đọc được file input.txt: {e}"
 
     batch_results = []
-    for sentence in sentences:
+    for idx, sentence in enumerate(sentences, 1):
         phrases = extract_phrases(sentence)
         ipa_dict = get_phonetics_for_phrases(phrases)
         trans_dict = translate_phrases(phrases, dest='vi')
+        vi_full = translate_sentence(sentence, dest='vi')
+        # Dịch từng cụm - dùng để hover cụm trong bản dịch hoàn chỉnh
+        vi_phrase_spans = [
+            {
+                "vi": trans_dict.get(phrase, ""),
+                "data_phrase": f"{idx}-{i+1}"
+            }
+            for i, phrase in enumerate(phrases)
+        ]
         batch_results.append({
             "sentence": sentence,
+            "vi_full": vi_full,
+            "vi_phrase_spans": vi_phrase_spans,
             "phrases": [
                 {
                     "text": phrase,
                     "ipa": ipa_dict.get(phrase, ""),
-                    "vi": trans_dict.get(phrase, "")
+                    "vi": trans_dict.get(phrase, ""),
+                    "data_phrase": f"{idx}-{i+1}"
                 }
-                for phrase in phrases
+                for i, phrase in enumerate(phrases)
             ]
         })
     return render_template('batch.html', batch_results=batch_results)
