@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Batch Streaming</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #fafbfc; margin: 0; padding: 0;}
+        .container { max-width: 900px; margin: 40px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); padding: 32px 30px 38px 30px;}
+        .sentence-title { font-weight: bold; font-size: 1.07em; margin-top: 26px; margin-bottom: 5px;}
+        .sentence { font-size: 1.13em; margin-bottom: 12px;}
+        .phrase-highlight {
+            background: #e5f0ff;
+            border-radius: 5px;
+            transition: background 0.2s;
+            padding: 2px 4px;
+            margin-right: 2px;
+            cursor: pointer;
+        }
+        .phrase-highlight.active,
+        .phrase-highlight:hover {
+            background: #98c6ff;
+            box-shadow: 0 0 0 2px #4f95ef;
+        }
+        .vi-full {
+            font-size: 1.11em;
+            color: #185209;
+            margin: 0 0 18px 0;
+            line-height: 1.8;
+        }
+        .vi-full-highlight {
+            background: #eafbe6;
+            border-radius: 4px;
+            transition: background 0.2s;
+            padding: 1.5px 4px;
+            margin-right: 2px;
+            cursor: pointer;
+        }
+        .vi-full-highlight.active,
+        .vi-full-highlight:hover {
+            background: #befad2;
+            box-shadow: 0 0 0 2px #a7eec7;
+        }
+        .vi-missing {
+            color: #aaa !important;
+            font-style: italic;
+        }
+        .phrase-table { width: 100%; border-collapse: collapse; margin-bottom: 12px;}
+        .phrase-table th, .phrase-table td { padding: 8px 6px; border-bottom: 1px solid #ededed;}
+        .phrase-table th {background: #f8f8f8;}
+        .voice-btn { background: #f5f6fa; border: 1px solid #bfc8e0; color: #3e66b1; border-radius: 50%; width: 26px; height: 26px; font-size: 15px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;}
+        .voice-btn:hover { background: #e5f0ff; border-color: #4f95ef; color: #174983;}
+        .ipa-col { font-family: 'Segoe UI', 'Arial', 'sans-serif'; color: #444; font-size: 1.07em;}
+        .vi-col { color: #256c0b; font-size: 1.03em;}
+        .en-col { font-weight: 500; color: #1a3a6b; cursor: pointer; background: transparent; transition: background 0.15s;}
+        .en-col.active,
+        .en-col:hover {
+            background: #e5f0ff;
+        }
+        .phrase-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .phrase-table tbody tr:hover {
+            background: #e6f0ff;
+            transition: background 0.2s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Kết quả tách cụm & phiên âm IPA từ file <code>input.txt</code> (Streaming)</h2>
+        <div id="results"></div>
+    </div>
+    <script>
+    function isUnderscorePhrase(text) {
+        // Chỉ gồm các dấu _ và dấu cách
+        return typeof text === 'string' && /^[_\s]+$/.test(text.trim()) && text.trim().length > 0;
+    }
+
+    function renderItem(item) {
+        // Sử dụng phrases_dedup nếu có, nếu không thì fallback sang phrases
+        const phrasesForSentence = item.phrases_dedup || (item.phrases 
+            ? (() => {
+                // fallback JS dedup logic (giữ nguyên cụm toàn dấu _, các cụm khác chỉ 1 lần)
+                let seen = new Set(), result = [];
+                for (const ph of item.phrases) {
+                    const clean = (ph.text !== undefined ? ph.text : ph).trim();
+                    if (isUnderscorePhrase(clean)) {
+                        result.push(ph);
+                    } else if (!seen.has(clean)) {
+                        seen.add(clean);
+                        result.push(ph);
+                    }
+                }
+                return result;
+            })()
+            : []
+        );
+
+        // sentence: giữ nguyên cụm toàn dấu _, các cụm khác chỉ giữ lần đầu
+        let sentenceHtml = phrasesForSentence
+            .map(ph => {
+                // ph có thể là object hoặc string tuỳ payload
+                let text = ph.text !== undefined ? ph.text : ph;
+                let data_phrase = ph.data_phrase !== undefined ? ph.data_phrase : "";
+                return `<span class="phrase-highlight" data-phrase="${data_phrase}">${text}</span>`;
+            })
+            .join(' ');
+
+        // vi-full-highlight: vẫn lấy từ vi_phrase_spans như cũ
+        let seenVi = new Set();
+        let seenEnFallback = new Set();
+        let viFullHtml = item.vi_phrase_spans
+            .map((vp, idx) => {
+                let vi = vp.vi;
+                let enText = item.phrases[idx] ? item.phrases[idx].text : "";
+                if (vi && vi.trim()) {
+                    if (seenVi.has(vi)) return "";
+                    seenVi.add(vi);
+                    return `<span class="vi-full-highlight" data-phrase="${vp.data_phrase}">${vi}</span>`;
+                } else {
+                    if (isUnderscorePhrase(enText)) {
+                        if (seenEnFallback.has(enText)) return "";
+                        seenEnFallback.add(enText);
+                        return `<span class="vi-full-highlight vi-missing" data-phrase="${vp.data_phrase}">${enText}</span>`;
+                    }
+                    if (seenEnFallback.has(enText)) return "";
+                    seenEnFallback.add(enText);
+                    return `<span class="vi-full-highlight vi-missing" data-phrase="${vp.data_phrase}">${enText}</span>`;
+                }
+            })
+            .filter(Boolean).join(' ');
+
+        // Bảng dịch: giữ nguyên
+        let tableRows = item.phrases
+            .map(ph => `
+                <tr>
+                    <td class="en-col" data-phrase="${ph.data_phrase}">${ph.text}</td>
+                    <td>
+                        <button class="voice-btn" aria-label="Phát âm ${ph.text}" data-voice="${ph.text}">&#128264;</button>
+                    </td>
+                    <td class="ipa-col">${ph.ipa}</td>
+                    <td class="vi-col">${ph.vi}</td>
+                </tr>
+            `)
+            .join('');
+
+        let html = `
+        <div class="sentence-title">Câu ${item.index}:</div>
+        <div class="sentence">
+            ${sentenceHtml}
+        </div>
+        <div class="vi-full">
+            ${viFullHtml}
+        </div>
+        <span style="color:#888;font-size:0.95em;">&nbsp;&nbsp;[gốc: ${item.sentence}]</span><br>
+        <span style="color:#888;font-size:0.95em;">&nbsp;&nbsp;[dịch: ${item.vi_full}]</span>
+        <table class="phrase-table">
+            <thead>
+                <tr>
+                    <th>Cụm từ tiếng Anh</th>
+                    <th></th>
+                    <th>IPA</th>
+                    <th>Dịch tiếng Việt</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${tableRows}
+            </tbody>
+        </table>
+        `;
+
+        let div = document.createElement('div');
+        div.innerHTML = html;
+        document.getElementById('results').appendChild(div);
+
+        // Hover đồng bộ
+        div.querySelectorAll('.en-col, .phrase-highlight, .vi-full-highlight').forEach(function(elem) {
+            elem.addEventListener('mouseenter', function() {
+                let phrase = elem.getAttribute('data-phrase');
+                document.querySelectorAll('[data-phrase="' + phrase + '"]').forEach(function(target){
+                    target.classList.add('active');
+                });
+            });
+            elem.addEventListener('mouseleave', function() {
+                let phrase = elem.getAttribute('data-phrase');
+                document.querySelectorAll('[data-phrase="' + phrase + '"]').forEach(function(target){
+                    target.classList.remove('active');
+                });
+            });
+        });
+        // Phát âm
+        div.querySelectorAll('.voice-btn').forEach(function(btn){
+            btn.addEventListener('click', function(e){
+                e.stopPropagation();
+                let text = btn.getAttribute('data-voice');
+                speakPhrase(text);
+            });
+        });
+    }
+    function speakPhrase(text) {
+        if (!window.speechSynthesis) {
+            alert("Trình duyệt của bạn không hỗ trợ phát âm!");
+            return;
+        }
+        const utter = new window.SpeechSynthesisUtterance(text);
+        utter.lang = "en-US";
+        const voices = window.speechSynthesis.getVoices();
+        const usVoice = voices.find(v => v.lang === 'en-US');
+        if (usVoice) utter.voice = usVoice;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utter);
+    }
+    window.speechSynthesis.getVoices();
+
+    // Kết nối SSE
+    const evtSource = new EventSource("/batch_stream");
+    evtSource.onmessage = function(event) {
+        let item = JSON.parse(event.data);
+        if(item.error){
+            alert(item.error);
+            evtSource.close();
+            return;
+        }
+        renderItem(item);
+    }
+    </script>
+</body>
+</html>

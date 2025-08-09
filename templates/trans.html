@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dịch từ theo ngữ cảnh câu</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .container { max-width: 670px; margin: 40px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); padding: 32px 30px 38px 30px;}
+        .sentence { font-size: 1.22em; line-height: 1.8; margin-bottom: 12px;}
+        .phrase { background: #e5f0ff; border-radius: 6px; padding: 2px 5px; margin-right: 3px; cursor: pointer; transition: background 0.2s;}
+        .phrase.active, .phrase:hover { background: #98c6ff; }
+        .vi-full { background: #eafbe6; border-radius: 6px; margin: 18px 0 18px 0; padding: 8px 10px; font-size: 1.12em; }
+        .vi-phrase { background: #c2eeb9; border-radius: 6px; padding: 2px 5px; margin-right: 3px; cursor: pointer; transition: background 0.2s;}
+        .vi-phrase.active, .vi-phrase:hover { background: #6ede87; }
+        .vi-plain { color: #185209; }
+        .vi-plain.inactive { opacity: 0.6; }
+        form { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Dịch từ theo ngữ cảnh câu</h2>
+    <form method="POST">
+        <input type="text" name="sentence" style="width:60%;font-size:1.1em;" placeholder="Nhập câu tiếng Anh..." required
+               value="{{ request.form.sentence if request.form.sentence else '' }}">
+        <button type="submit" style="font-size:1.1em;">Dịch</button>
+    </form>
+    {% if result %}
+        <div class="sentence">
+            {% for phrase in result.phrases %}
+                <span class="phrase" data-phrase="{{ phrase.data_phrase }}" title="Nghĩa: {{ phrase.vi_mean }}">{{ phrase.text }}</span>
+            {% endfor %}
+        </div>
+        <div class="vi-full" id="vi-full">
+            {% set last_end = 0 %}
+            {% for vi in result.vi_phrases %}
+                {% if vi.start > last_end %}
+                    <span class="vi-plain">{{ result.vi_full[last_end:vi.start] }}</span>
+                {% endif %}
+                {% if vi.vi %}
+                    <span class="vi-phrase" data-phrase="{{ vi.data_phrase }}">{{ vi.vi }}</span>
+                {% endif %}
+                {% set last_end = vi.end %}
+            {% endfor %}
+            {% if last_end < result.vi_full|length %}
+                <span class="vi-plain">{{ result.vi_full[last_end:] }}</span>
+            {% endif %}
+        </div>
+        <div>
+            <em style="color:#888;">* Click vào từ/cụm tiếng Anh để xem nghĩa tương ứng (nếu có) trong bản dịch.</em>
+        </div>
+    {% endif %}
+</div>
+<script>
+document.querySelectorAll('.phrase, .vi-phrase').forEach(function(elem) {
+    elem.addEventListener('mouseenter', function() {
+        let p = elem.getAttribute('data-phrase');
+        document.querySelectorAll('[data-phrase="'+p+'"]').forEach(function(e){
+            e.classList.add('active');
+        });
+    });
+    elem.addEventListener('mouseleave', function() {
+        let p = elem.getAttribute('data-phrase');
+        document.querySelectorAll('[data-phrase="'+p+'"]').forEach(function(e){
+            e.classList.remove('active');
+        });
+    });
+});
+</script>
+</body>
+</html>
